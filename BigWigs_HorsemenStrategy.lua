@@ -161,7 +161,8 @@ local syncName = {
 	healerNumber = "BWSHHealerNumber"..module.revision,
 	dpsStrategy = "BWHSDpsStrategy"..module.revision,
 	dpsNumber = "BWHSDpsNumber"..module.revision,
-	mark = "HorsemenMark"..markRevisionSync,
+	--mark = "HorsemenMark"..markRevisionSync,
+	mark = "HorsemenMark3"
 }
 
 --example: rotation length 8marks, where to rotate
@@ -435,6 +436,7 @@ end
 ------------------------------
 
 function module:BigWigs_RecvSync(sync, rest, nick)
+	--BigWigs:Print("horsemen strategy sync")
 	if sync == syncName.mark then
 		self:CancelScheduledEvent("BWHSMapUpdate")
 		marks = marks + 1
@@ -642,14 +644,22 @@ function module:HealerPosition(mark)
 	if mark == 0 then
 		local currentPos = healerPositions[currentStrategy][healerNumber][1]+1
 		local nextPos = healerPositions[currentStrategy][healerNumber][3]+1
+				
 		if currentPos ~= nextPos then
 			return currentPos+5
 		else
 			return currentPos
 		end
 	else
+		local prevPos = healerPositions[currentStrategy][healerNumber][mod(mark-1,rotationLength)+2]+1
 		local currentPos = healerPositions[currentStrategy][healerNumber][mod(mark,rotationLength)+2]+1
 		local nextPos = healerPositions[currentStrategy][healerNumber][mod((mark+1),rotationLength)+2]+1
+		
+		--BigWigs:Print(prevPos .. " " .. currentPos .. " " .. nextPos)
+		if prevPos ~= currentPos then
+			module:Sound("Murloc")
+		end
+		
 		if currentPos ~= nextPos then
 			return currentPos+5
 		else
@@ -761,4 +771,49 @@ function module:TableContains(table, value)
 		key = key + 1
 	end
 	return false
+
 end
+
+--[[
+function module:CHAT_MSG_COMBAT_HOSTILE_DEATH(msg)
+	if msg == string.format(UNITDIESOTHER, thane) or
+		msg == string.format(UNITDIESOTHER, zeliek) or
+		msg == string.format(UNITDIESOTHER, mograine) or
+		msg == string.format(UNITDIESOTHER, blaumeux) then
+		deaths = deaths + 1
+		if deaths == 4 then
+			self.core:ToggleModuleActive(self, false)
+		end
+	end
+end
+]]
+-- /run BigWigs:GetModule("Horsemen Strategy"):Test()
+function module:TestMark(n)
+	--BigWigs:GetModule("The Four Horsemen"):Sync("HorsemenMark20014 " .. n)
+	if n == 10 then
+		module:CHAT_MSG_COMBAT_HOSTILE_DEATH(string.format(UNITDIESOTHER, thane))
+		BigWigs:Print(string.format(UNITDIESOTHER, thane))
+	end
+	if n == 20 then
+		module:CHAT_MSG_COMBAT_HOSTILE_DEATH(string.format(UNITDIESOTHER, zeliek))
+		BigWigs:Print(string.format(UNITDIESOTHER, zeliek))
+	end
+	if n == 30 then
+		module:CHAT_MSG_COMBAT_HOSTILE_DEATH(string.format(UNITDIESOTHER, mograine))
+		BigWigs:Print(string.format(UNITDIESOTHER, mograine))
+	end
+	if n == 40 then
+		module:CHAT_MSG_COMBAT_HOSTILE_DEATH(string.format(UNITDIESOTHER, blaumeux))
+		BigWigs:Print(string.format(UNITDIESOTHER, blaumeux))
+	end
+	
+	module:BigWigs_RecvSync("HorsemenMark3", n, UnitName("player"))
+	BigWigs:Print("Test Mark " .. n)
+end
+function module:Test()
+	marks = 0
+	for i = 1, 99, 1 do
+		self:ScheduleEvent("BWHSTest"..i, self.TestMark, i/2, self, i)
+	end
+end
+
